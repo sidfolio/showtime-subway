@@ -18,9 +18,20 @@ export function preloadReactor(){
 function setStatus(label,state=''){
   const el=document.querySelector('#reactor-status');
   if(!el)return;
-  el.textContent=`REACTOR · ${label}`;
+  const labelEl=document.querySelector('#reactor-status-label');
+  if(labelEl)labelEl.textContent=`REACTOR · ${label}`;else el.textContent=`REACTOR · ${label}`;
   el.className=`reactor-status ${state}`;
   el.hidden=false;
+  window.dispatchEvent(new CustomEvent('reactor-status',{detail:{label,state}}));
+}
+
+function setRetryVisible(visible,label='RETRY VISUALS'){const button=document.querySelector('#reactor-retry');if(button){button.hidden=!visible;button.textContent=label;}}
+
+function friendlyFailure(error){
+ const raw=[error?.code,error?.message,error?.status].filter(Boolean).join(' ');
+ if(/402|credits_depleted|balance is depleted/i.test(raw))return {label:'CREDITS NEEDED',message:'Add Reactor credits to enable enhanced visuals.'};
+ if(/wasm|internal_error/i.test(raw))return {label:'RETRY NEEDED',message:'Reactor visual session failed to start.'};
+ return {label:'OFFLINE',message:'Reactor visual connection failed.'};
 }
 
 const enhancementPrompt=[
@@ -32,6 +43,7 @@ const enhancementPrompt=[
 async function disconnect(video){
   active=false;
   setStatus('OFF');
+  setRetryVisible(false);
   video?.classList.remove('reactor-active');
   if(sourceStream){sourceStream.getTracks().forEach(track=>track.stop());sourceStream=null;}
   const current=model;model=null;
@@ -45,6 +57,7 @@ export async function toggleReactor({canvas=document.querySelector('#game'),vide
   if(!canvas?.captureStream){setStatus('UNAVAILABLE','error');return 'Reactor needs a browser with canvas capture support.';}
 
   setStatus('CONNECTING','connecting');
+  setRetryVisible(false);
   connecting=(async()=>{
     if(!await preloadReactor())throw new Error('Reactor model package could not load.');
     const tokenResponse=await fetch('/api/token',{method:'POST'});
@@ -60,8 +73,11 @@ export async function toggleReactor({canvas=document.querySelector('#game'),vide
       firstFrameTimer=setTimeout(()=>reject(new Error('Reactor connected but no visual frame arrived within 20 seconds.')),20000);
     });
     client.on('error',error=>{
-      const code=error?.code||'SDK_ERROR';
-      setStatus(`ERROR · ${code}`,'error');
+      active=false;
+      const failure=friendlyFailure(error);
+      setStatus(failure.label,'error');
+      setRetryVisible(true,failure.label==='CREDITS NEEDED'?'RETRY AFTER ADDING CREDITS':'RETRY VISUALS');
+      video?.pause();video?.classList.remove('reactor-active');video?.removeAttribute('src');
       console.error('Reactor SDK error:',error);
     });
     client.onMainVideo((_track,stream)=>{
@@ -69,6 +85,7 @@ export async function toggleReactor({canvas=document.querySelector('#game'),vide
       video.srcObject=stream;
       video.classList.add('reactor-active');
       setStatus('LIVE','live');
+      setRetryVisible(false);
       if(firstFrameTimer)clearTimeout(firstFrameTimer);
       firstFrameResolve?.();firstFrameResolve=null;
       void video.play().catch(()=>{});
@@ -88,10 +105,11 @@ export async function toggleReactor({canvas=document.querySelector('#game'),vide
   try{return await connecting;}
   catch(error){
     const sdkError=model?.getLastError?.();
-    const detail=sdkError?.code?`${sdkError.code}${sdkError.message?` · ${sdkError.message}`:''}`:(error instanceof Error?error.message:'connection failed');
+    const failure=friendlyFailure(sdkError||error);
     await disconnect(video);
-    setStatus(`ERROR · ${detail}`,'error');
-    return `Reactor unavailable · ${detail}`;
+    setStatus(failure.label,'error');
+    setRetryVisible(true,failure.label==='CREDITS NEEDED'?'RETRY AFTER ADDING CREDITS':'RETRY VISUALS');
+    return `Reactor unavailable · ${failure.message}`;
   }
   finally{connecting=null;}
 }

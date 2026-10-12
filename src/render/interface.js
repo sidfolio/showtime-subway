@@ -84,6 +84,15 @@ export function updateInterface(s,demo,demoPaused,dt,runState=s){
 
  const paused=!demo&&s.status!=='playing'||Boolean(demo&&demoPaused);
  $('ui-layer').classList.toggle('overlay-open',!$('overlay').hidden);
+ const trainingStage=s.stats.tricks>=3?'advanced':s.stats.tricks>0?'stunts':s.engaged?'stunts':'basic';
+ $('ui-layer').classList.remove('controls-basic','controls-stunts','controls-advanced');
+ $('ui-layer').classList.add(`controls-${trainingStage}`);
+ const progression={
+  basic:['STAGE 1 · ORIENTATION','MOVE TO AN OPEN AISLE · WASD / ARROWS'],
+  stunts:['STAGE 2 · FIRST STUNT',s.player.pole!==null?'LAND A SAFE SPIN · J / K / L':'REACH A ROD · E TO GRIP'],
+  advanced:['STAGE 3 · BUILD YOUR COMBO',s.stats.tricks<3?'LAND 3 STUNTS TO UNLOCK RUSH HOUR':'KEEP THE CROWD SAFE · COMBO ACTIVE']
+ }[trainingStage];
+ $('progression-stage').textContent=progression[0];$('progression-objective').textContent=progression[1];
 
  const danger=s.level===1&&s.aggressor&&Math.abs(s.aggressor.x-s.player.x)<100;
 

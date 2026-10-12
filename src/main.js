@@ -19,16 +19,20 @@ frame.id='game-frame';ui.before(frame);frame.append(ui);
 if(new URLSearchParams(location.search).has('capture'))document.body.classList.add('v1-capture');
 let state=createState(1);populate(state);state.status='menu';let canvas=document.getElementById('game');const overlay=document.getElementById('overlay');
 let demo=null,demoPaused=false,pendingLevel=null,savedState=null,savedView='front';
+let firstRun=true;
+try{firstRun=localStorage.getItem('showtime-first-ride-complete')!=='1';}catch{}
 let visual;
 try{visual=createSubwayRenderer(canvas)}catch(error){console.error('3D renderer unavailable:',error);const replacement=canvas.cloneNode();canvas.replaceWith(replacement);canvas=replacement;document.getElementById('view-status').textContent='WebGL unavailable · 2D fallback';document.querySelectorAll('[data-camera]').forEach(b=>b.disabled=true)}
 function setCamera(view){visual?.setView(view);document.querySelectorAll('[data-camera]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.camera===view))});}
 document.querySelectorAll('[data-camera]').forEach(b=>b.onclick=()=>setCamera(b.dataset.camera));
 function start(level){state=createState(level,document.getElementById('endless').checked,document.getElementById('route').value);populate(state);state.player.x=640;state.player.lane=0;state.player.entry=false;state.player.immune=3;say(state,'Use WASD or arrow keys to move. Walk to a pole and press E to grip.',4);overlay.hidden=true;document.getElementById('result').textContent='';document.getElementById('resume').hidden=true;clearPressed();actions.held.clear();canvas.focus()}
 function beginTutorial(level=null){if(demo)return;savedState=state;savedView=visual?.getView()||'side';pendingLevel=level;demo=createTutorial();state=demo.state;demoPaused=false;overlay.hidden=true;document.getElementById('tutorial-panel').hidden=false;document.getElementById('skip-tutorial').querySelector('span').textContent=level===null?'Back to game':'Skip & play';setCamera('side');document.querySelectorAll('[data-camera]').forEach(b=>b.disabled=true);clearPressed();actions.held.clear();canvas.focus();}
-function finishTutorial(){demo=null;document.getElementById('tutorial-panel').hidden=true;document.querySelectorAll('[data-camera]').forEach(b=>b.disabled=!visual);setCamera(savedView);if(pendingLevel!==null)start(pendingLevel);else{state=savedState;overlay.hidden=state.status==='playing';}clearPressed();actions.held.clear();}
+function finishTutorial(){demo=null;document.getElementById('tutorial-panel').hidden=true;document.querySelectorAll('[data-camera]').forEach(b=>b.disabled=!visual);setCamera(savedView);if(pendingLevel!==null)start(pendingLevel);else{state=savedState;overlay.hidden=state.status==='playing';}firstRun=false;try{localStorage.setItem('showtime-first-ride-complete','1');}catch{}clearPressed();actions.held.clear();}
 document.getElementById('skip-tutorial').onclick=finishTutorial;
 function pause(){if(demo){demoPaused=!demoPaused;clearPressed();return;}if(state.status==='playing'){state.status='paused';overlay.hidden=false;document.querySelector('h1').textContent='PAUSED';document.getElementById('resume').hidden=false;interfaceUI.focusPause()}else if(state.status==='paused'){state.status='playing';overlay.hidden=true;canvas.focus()}else{document.getElementById('endless').checked=false;start(interfaceUI.selected())}clearPressed()}
 document.getElementById('pause').onclick=pause;document.getElementById('resume').onclick=pause;
+document.getElementById('reactor-retry').onclick=()=>{void toggleReactor({canvas,video:document.getElementById('reactor-video')}).then(message=>{say(state,message,4);if(message.includes('live')&&state.status==='paused'&&document.querySelector('h1').textContent==='REACTOR PAUSED'){state.status='playing';overlay.hidden=true;canvas.focus();}})};
+window.addEventListener('reactor-status',event=>{const detail=event.detail||{};document.body.classList.toggle('reactor-offline',detail.state==='error');if(detail.state==='error'&&!demo&&state.status==='playing'){state.status='paused';overlay.hidden=false;document.querySelector('h1').textContent='REACTOR PAUSED';document.getElementById('result').textContent='Visual connection lost. Retry Reactor visuals to continue.';}});
 document.getElementById('sound').onclick=()=>document.getElementById('sound').textContent=`Sound: ${toggleSound()?'on':'off'}`;
 document.getElementById('end').onclick=()=>{if(demo)finishTutorial();if(['playing','paused'].includes(state.status)){state.endLine=state.lineWarning?.phase==='arrived';state.status='ended';finish()}};
 document.addEventListener('visibilitychange',()=>{if(document.hidden){if(demo&&!demoPaused)pause();else if(!demo&&state.status==='playing')pause()}});window.addEventListener('blur',()=>{if(demo&&!demoPaused)pause();else if(!demo&&state.status==='playing')pause()});
@@ -45,7 +49,8 @@ function updateCharacterLoading(){
  // A single slow or unavailable GLB must not make the already-live Reactor
  // session look frozen. Keep those riders loading in the background and use
  // the renderer's procedural placeholder until they arrive.
- const fallbackReady=!complete&&startup.reactorReady&&performance.now()-startup.startedAt>45000;
+ const reactorFailed=Boolean(startup.reactorMessage?.startsWith('Reactor unavailable'));
+ const fallbackReady=!complete&&startup.reactorReady&&(reactorFailed||performance.now()-startup.startedAt>45000);
  if(fallbackReady)startup.characterFallback=true;
  startup.characters=(complete||startup.characterFallback)&&progress.total>0;
  // Start X2 as soon as the core player/sleeper/commuter assets are ready;
@@ -60,8 +65,8 @@ function updateCharacterLoading(){
  const percent=Math.round(Math.min(99,loadedParts/2*100));
  document.getElementById('startup-progress-bar')?.style.setProperty('width',`${percent}%`);
  const detail=document.getElementById('startup-loading-detail');
- if(detail)detail.textContent=startup.characters?(startup.characterFallback?'Some riders are still loading. Opening with placeholders…':startup.reactorReady?'Ready. Opening the game menu…':'Loading Reactor visuals…'):startup.reactorStarted?`Loading characters… ${progress.loaded}/${progress.total} · Reactor visuals starting…`:`Loading characters… ${progress.loaded}/${progress.total}`;
- if(!startup.done&&startup.characters&&startup.reactorReady){startup.done=true;loading.hidden=true;overlay.hidden=false;document.body.classList.remove('booting');}
+ if(detail)detail.textContent=startup.characters?(startup.reactorMessage?.startsWith('Reactor unavailable')?'Reactor visuals unavailable. Opening local preview…':startup.characterFallback?'Some riders are still loading. Opening with placeholders…':startup.reactorReady?'Ready. Opening the game menu…':'Loading Reactor visuals…'):startup.reactorStarted?`Loading characters… ${progress.loaded}/${progress.total} · Reactor visuals starting…`:`Loading characters… ${progress.loaded}/${progress.total}`;
+ if(!startup.done&&startup.characters&&startup.reactorReady){startup.done=true;loading.hidden=true;overlay.hidden=false;document.body.classList.remove('booting');if(firstRun&&!startup.tutorialStarted){startup.tutorialStarted=true;setTimeout(()=>beginTutorial(interfaceUI.selected()),0);}}
  if(!startup.done){el.hidden=true;return;}
  if(complete&&!el.dataset.readyUntil){el.dataset.readyUntil=String(performance.now()+3200);el.querySelector('strong').textContent='CHARACTERS READY';}
  el.hidden=complete&&performance.now()>Number(el.dataset.readyUntil||0);
