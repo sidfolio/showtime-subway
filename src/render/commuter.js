@@ -6,9 +6,20 @@ import {aimBone,lockHands} from './skinned-pose.js';
 
 // One local asset and shared GPU resources; each rider gets an independent skeleton.
 const assets=new Map(),failures=new Map(),pending=new Map();let loadChain=Promise.resolve();
+// Vercel serves Git LFS pointer files from the repository, not the binary
+// objects. GitHub's media endpoint serves the public GLBs with CORS enabled,
+// so use it only when the local/deployed copy cannot be parsed.
+const remoteAssetBase=import.meta.env.VITE_CHARACTER_ASSET_BASE||'https://media.githubusercontent.com/media/sidfolio/showtime-subway/main/public/assets/characters';
 function load(kind){if(pending.has(kind))return pending.get(kind);const path=characterFiles[kind];if(!path)return Promise.resolve();
  const job=loadChain.then(async()=>{
-  const gltf=await new GLTFLoader().loadAsync('/assets/characters/'+path),textures=new Set(),oldImages=new Set();
+  const loader=new GLTFLoader();
+  let gltf;
+  try{gltf=await loader.loadAsync('/assets/characters/'+path);}
+  catch(localError){
+   console.warn(`${kind} local GLB unavailable; loading the GitHub asset copy.`,localError);
+   gltf=await loader.loadAsync(`${remoteAssetBase}/${path}`);
+  }
+  const textures=new Set(),oldImages=new Set();
   gltf.scene.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;
    // Detach mesh buffers from the large GLB image buffer retained by typed views.
    const old=o.geometry;o.geometry=old.clone();old.dispose();
