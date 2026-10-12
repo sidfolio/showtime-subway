@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+reference-frames/
+.vercel/
+documentation/*.mp4
+Documentation videos/

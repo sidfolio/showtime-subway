@@ -1,0 +1,3 @@
+let context;export let enabled=false;
+export function toggleSound(){enabled=!enabled;if(enabled){context??=new AudioContext();context.resume()}return enabled}
+export function playEvents(events){if(!enabled||!context)return;for(const event of events){const o=context.createOscillator(),g=context.createGain();o.connect(g);g.connect(context.destination);o.type=event==='lurch'?'triangle':'sine';o.frequency.setValueAtTime({tip:660,jump:330,trick:440,lurch:65,strike:130,doors:880,block:220}[event]||300,context.currentTime);g.gain.setValueAtTime(.035,context.currentTime);g.gain.exponentialRampToValueAtTime(.001,context.currentTime+.18);o.start();o.stop(context.currentTime+.2)}}

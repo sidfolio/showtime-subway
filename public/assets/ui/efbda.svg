@@ -1,0 +1,21 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="88" height="26" viewBox="0 0 88 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Strike indicators" clip-path="url(#clip0_0_5)">
+<g id="Strike slot">
+<path d="M26 6L19.7991 0H6.20085L0 6V20.5L6.20085 26H19.7991L26 20.5V6Z" fill="#EC886B"/>
+<path d="M19.5967 0.5L25.5 6.21191V20.2744L19.6094 25.5H6.39062L0.5 20.2744V6.21191L6.40332 0.5H19.5967Z" stroke="white" stroke-opacity="0.6"/>
+</g>
+<g id="Strike slot_2">
+<path d="M57 6L50.7991 0H37.2009L31 6V20.5L37.2009 26H50.7991L57 20.5V6Z" fill="#EC886B"/>
+<path d="M50.5967 0.5L56.5 6.21191V20.2744L50.6094 25.5H37.3906L31.5 20.2744V6.21191L37.4033 0.5H50.5967Z" stroke="white" stroke-opacity="0.6"/>
+</g>
+<g id="Strike slot_3">
+<path d="M88 6L81.7991 0H68.2009L62 6V20.5L68.2009 26H81.7991L88 20.5V6Z" fill="#EC886B"/>
+<path d="M81.5967 0.5L87.5 6.21191V20.2744L81.6094 25.5H68.3906L62.5 20.2744V6.21191L68.4033 0.5H81.5967Z" stroke="white" stroke-opacity="0.6"/>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_0_5">
+<rect width="88" height="26" fill="white"/>
+</clipPath>
+</defs>
+</svg>

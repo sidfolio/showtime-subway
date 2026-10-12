@@ -1,0 +1,2 @@
+export function updateHUD(s){for(const [id,value]of Object.entries({level:`${s.level+1} · ${s.config.name}`,score:String(s.score),combo:`${s.combo}×`,strikes:`${s.strikes} / 3`,station:`Stop ${s.station} · LIVE`}))document.getElementById(id).textContent=value;document.getElementById('balance').value=s.player.balance;document.getElementById('message').textContent=s.messageUntil>s.time?s.message:'Find open space. Chain tricks for a bigger combo.';document.getElementById('defense').hidden=s.level!==1;document.querySelectorAll('.fight').forEach(b=>b.hidden=s.level!==1)}
+
