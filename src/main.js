@@ -56,7 +56,7 @@ function updateCharacterLoading(){
  document.getElementById('startup-progress-bar')?.style.setProperty('width',`${percent}%`);
  const detail=document.getElementById('startup-loading-detail');
  if(detail)detail.textContent=startup.characters?(startup.reactorReady?'Ready. Opening the game menu…':'Loading Reactor visuals…'):startup.reactorStarted?`Loading characters… ${progress.loaded}/${progress.total} · Reactor visuals starting…`:`Loading characters… ${progress.loaded}/${progress.total}`;
- if(!startup.done&&startup.characters&&startup.reactorReady){startup.done=true;loading.hidden=true;overlay.hidden=false;}
+ if(!startup.done&&startup.characters&&startup.reactorReady){startup.done=true;loading.hidden=true;overlay.hidden=false;document.body.classList.remove('booting');}
  if(!startup.done){el.hidden=true;return;}
  if(complete&&!el.dataset.readyUntil){el.dataset.readyUntil=String(performance.now()+3200);el.querySelector('strong').textContent='CHARACTERS READY';}
  el.hidden=complete&&performance.now()>Number(el.dataset.readyUntil||0);
