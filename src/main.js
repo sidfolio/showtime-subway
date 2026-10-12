@@ -34,7 +34,7 @@ document.getElementById('end').onclick=()=>{if(demo)finishTutorial();if(['playin
 document.addEventListener('visibilitychange',()=>{if(document.hidden){if(demo&&!demoPaused)pause();else if(!demo&&state.status==='playing')pause()}});window.addEventListener('blur',()=>{if(demo&&!demoPaused)pause();else if(!demo&&state.status==='playing')pause()});
 function finish(){overlay.hidden=false;document.getElementById('resume').hidden=true;document.querySelector('h1').textContent=state.status==='won'?'A great ride.':state.status==='ended'?(state.endLine?'END OF THE LINE.':'RUN COMPLETE.'):'Run ended.';document.getElementById('result').textContent=`${state.score} tips · ${state.stats.tricks} tricks · ${state.stats.safeStops} safe stops · ${state.strikes} strikes. ${state.status==='lost'?(state.strikes>=3?'The conductor ended the run.':'The run ended. Try chaining more tricks.'):''}`}
 const interfaceUI=initializeInterface({getState:()=>state,start,pause,beginTutorial});
-const startup={characters:false,reactorModule:false,reactorStarted:false,reactorReady:false,done:false};
+const startup={characters:false,reactorModule:false,reactorStarted:false,reactorReady:false,done:false,startedAt:performance.now(),characterFallback:false};
 void preloadReactor().then(ready=>{startup.reactorModule=ready;if(!ready)startup.reactorReady=true;});
 let previous=performance.now(),accumulator=0;const step=1/60;
 const engagementKeys=new Set(['w','a','s','d',' ','e','q','shift','j','k','l','f','g','h','c','x','z']);
@@ -42,7 +42,12 @@ function updateCharacterLoading(){
  const el=document.getElementById('character-loading');if(!el||!visual?.castProgress)return;
  const progress=visual.castProgress();
  const complete=progress.loaded+progress.failed>=progress.total;
- startup.characters=complete&&progress.total>0;
+ // A single slow or unavailable GLB must not make the already-live Reactor
+ // session look frozen. Keep those riders loading in the background and use
+ // the renderer's procedural placeholder until they arrive.
+ const fallbackReady=!complete&&startup.reactorReady&&performance.now()-startup.startedAt>45000;
+ if(fallbackReady)startup.characterFallback=true;
+ startup.characters=(complete||startup.characterFallback)&&progress.total>0;
  // Start X2 as soon as the core player/sleeper/commuter assets are ready;
  // the rest of the imported cast can continue loading in parallel.
  const coreCastReady=progress.loaded+progress.failed>=3;
@@ -55,7 +60,7 @@ function updateCharacterLoading(){
  const percent=Math.round(Math.min(99,loadedParts/2*100));
  document.getElementById('startup-progress-bar')?.style.setProperty('width',`${percent}%`);
  const detail=document.getElementById('startup-loading-detail');
- if(detail)detail.textContent=startup.characters?(startup.reactorReady?'Ready. Opening the game menu…':'Loading Reactor visuals…'):startup.reactorStarted?`Loading characters… ${progress.loaded}/${progress.total} · Reactor visuals starting…`:`Loading characters… ${progress.loaded}/${progress.total}`;
+ if(detail)detail.textContent=startup.characters?(startup.characterFallback?'Some riders are still loading. Opening with placeholders…':startup.reactorReady?'Ready. Opening the game menu…':'Loading Reactor visuals…'):startup.reactorStarted?`Loading characters… ${progress.loaded}/${progress.total} · Reactor visuals starting…`:`Loading characters… ${progress.loaded}/${progress.total}`;
  if(!startup.done&&startup.characters&&startup.reactorReady){startup.done=true;loading.hidden=true;overlay.hidden=false;document.body.classList.remove('booting');}
  if(!startup.done){el.hidden=true;return;}
  if(complete&&!el.dataset.readyUntil){el.dataset.readyUntil=String(performance.now()+3200);el.querySelector('strong').textContent='CHARACTERS READY';}
